@@ -1,0 +1,55 @@
+name: Helm Lint
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'charts/**'
+      - '.github/workflows/helm-lint.yaml'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'charts/**'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'v3.12.0'
+
+      - name: Lint Helm chart
+        run: |
+          helm lint charts/hello-app/ --strict
+
+      - name: Template rendering test
+        run: |
+          helm template hello-app charts/hello-app/ --values charts/hello-app/values.yaml
+
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'v3.12.0'
+
+      - name: Validate Kubernetes manifests
+        run: |
+          helm template hello-app charts/hello-app/ \
+            --values charts/hello-app/values.yaml | \
+            kubectl apply --dry-run=client -f -
+        env:
+          KUBECONFIG: /dev/null

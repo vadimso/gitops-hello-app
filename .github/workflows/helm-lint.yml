@@ -1,0 +1,13 @@
+name: Helm Lint
+
+on:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: azure/setup-helm@v4
+    - run: helm lint charts/hello-app
+    - run: helm template hello charts/hello-app > /dev/null
