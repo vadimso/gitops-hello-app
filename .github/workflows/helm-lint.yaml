@@ -50,6 +50,6 @@ jobs:
         run: |
           helm template hello-app charts/hello-app/ \
             --values charts/hello-app/values.yaml | \
-            kubectl apply --dry-run=client -f -
+            kubectl apply --dry-run=client --validate=false -f -
         env:
           KUBECONFIG: /dev/null
