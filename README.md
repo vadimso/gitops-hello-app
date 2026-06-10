@@ -20,7 +20,50 @@ A complete GitOps deployment example using Terraform, Terragrunt, Helm, and Argo
 
 ## Quick Start (End-to-End)
 
-### 1. Create a local Kubernetes cluster with kind
+### Option 1: Automated Deployment with Terraform/Terragrunt
+
+This is the recommended approach for a fully automated setup.
+
+#### Prerequisites for Terraform approach:
+- Docker (for kind)
+- Terraform >= 1.0
+- Terragrunt >= 0.48
+- kubectl
+- Helm (for local chart linting)
+
+#### Steps:
+
+1. **Install Terraform providers**:
+   ```bash
+   terragrunt run-all init --terragrunt-working-dir envs/dev
+   ```
+
+2. **Create kind cluster**:
+   ```bash
+   terragrunt apply --terragrunt-working-dir envs/dev/cluster
+   ```
+
+3. **Install ArgoCD and create the Application**:
+   ```bash
+   export GIT_REPO_URL="https://github.com/YOUR_USERNAME/gitops-hello-app.git"
+   terragrunt apply --terragrunt-working-dir envs/dev/argocd
+   ```
+
+4. **Verify deployment**:
+   ```bash
+   kubectl get application -n argocd
+   kubectl get pods -n hello-app
+   ```
+
+5. **Access the application**:
+   ```bash
+   kubectl port-forward svc/hello-app 8080:5678 -n hello-app
+   curl http://localhost:8080
+   ```
+
+### Option 2: Manual Deployment with kubectl
+
+If you prefer manual setup or already have a cluster:
 
 ```bash
 kind create cluster --name demo
@@ -108,8 +151,10 @@ You should see: `Hello World`
 ```
 .
 ├── README.md                          # This file
+├── terragrunt.hcl                     # Root Terragrunt configuration
+├── provider.hcl                       # Terraform provider configuration
 ├── argocd/
-│   └── hello-app.yaml                # ArgoCD Application manifest
+│   └── hello-app.yaml                # ArgoCD Application manifest (for manual deployment)
 ├── charts/
 │   └── hello-app/
 │       ├── Chart.yaml                # Helm chart metadata
@@ -120,9 +165,20 @@ You should see: `Hello World`
 │           └── networkpolicy.yaml    # Network policy for pod security
 ├── envs/
 │   └── dev/
+│       ├── cluster/
+│       │   └── terragrunt.hcl        # Terragrunt config for kind cluster
+│       ├── argocd/
+│       │   └── terragrunt.hcl        # Terragrunt config for ArgoCD
 │       └── app/
-│           └── terragrunt.hcl        # Terragrunt configuration for dev environment
+│           └── terragrunt.hcl        # Terragrunt config for hello-app
 ├── modules/
+│   ├── cluster/
+│   │   ├── main.tf                   # Terraform module - creates kind cluster
+│   │   ├── variables.tf              # Module variables
+│   │   └── outputs.tf                # Module outputs
+│   ├── argocd/
+│   │   ├── main.tf                   # Terraform module - installs ArgoCD
+│   │   └── hello-app.yaml.tpl        # Template for ArgoCD Application
 │   └── app/
 │       ├── main.tf                   # Terraform module - generates Helm values
 │       ├── outputs.tf                # Module outputs
@@ -135,6 +191,47 @@ You should see: `Hello World`
 ```
 
 ## Configuration Details
+
+### Terraform Modules
+
+The project includes three main Terraform modules:
+
+#### 1. Cluster Module (`modules/cluster/`)
+Creates and manages a local kind cluster.
+
+**Variables:**
+- `cluster_name` (default: "demo"): Name of the kind cluster
+- `kubernetes_version` (default: "v1.28.0"): Kubernetes version
+- `api_server_port` (default: 6443): API server port
+
+**Outputs:**
+- `cluster_name`: Name of the created cluster
+- `kubeconfig`: Kubeconfig content
+- `endpoint`: Kubernetes API server endpoint
+
+#### 2. ArgoCD Module (`modules/argocd/`)
+Installs ArgoCD using Helm and creates the hello-app Application.
+
+**Variables:**
+- `argocd_version` (default: "5.51.6"): ArgoCD Helm chart version
+- `git_repo_url`: Git repository URL for syncing
+
+**Features:**
+- Enables ApplicationSet support
+- Automatically creates the hello-app Application
+- Uses Helm for declarative management
+
+#### 3. App Module (`modules/app/`)
+Generates Helm values for the hello-app deployment.
+
+**Variables:**
+- `name`: Application name
+- `image`: Container image
+- `replicas`: Number of replicas
+- `port`: Container port
+
+**Outputs:**
+- `values_file`: Path to generated Helm values file
 
 ### Helm Chart Values
 
@@ -225,7 +322,16 @@ kubectl logs -n hello-app -l app=hello-app
 
 ## Cleanup
 
-To remove everything:
+### If using Terraform/Terragrunt:
+
+```bash
+# Destroy in reverse order (app -> argocd -> cluster)
+terragrunt destroy --terragrunt-working-dir envs/dev/app
+terragrunt destroy --terragrunt-working-dir envs/dev/argocd
+terragrunt destroy --terragrunt-working-dir envs/dev/cluster
+```
+
+### If using manual deployment:
 
 ```bash
 # Delete the ArgoCD Application (this cascades to the hello-app namespace)

@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/vadimso/gitops-hello-app.git
+    repoURL: ${repo_url}
     targetRevision: main
     path: charts/hello-app
   destination:
