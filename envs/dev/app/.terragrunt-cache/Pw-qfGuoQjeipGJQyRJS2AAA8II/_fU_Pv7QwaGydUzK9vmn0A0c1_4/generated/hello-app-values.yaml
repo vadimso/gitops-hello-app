@@ -1,9 +1,0 @@
-name: hello-app
-
-image:
-  repository: hashicorp/http-echo
-
-replicaCount: 2
-
-service:
-  port: 5678
