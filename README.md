@@ -1,6 +1,6 @@
 # GitOps Hello App
 
-A complete GitOps deployment example using Terraform, Terragrunt, Helm, and ArgoCD to deploy a "Hello World" HTTP service on a local kind/minikube cluster
+A complete GitOps deployment example using Terraform, Terragrunt, Helm, and ArgoCD to deploy a "Hello World" HTTP service on a local kind/minikube cluster.
 
 ## Architecture
 
